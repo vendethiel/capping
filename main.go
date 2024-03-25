@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 )
@@ -31,9 +32,9 @@ func isCapped(character *Character) bool {
 
 func capped(character *Character) string {
 	if isCapped(character) {
-		return "capped"
+		return "+"
 	} else {
-		return "NOT CAPPED"
+		return "-"
 	}
 }
 
@@ -95,8 +96,34 @@ func locate(d *data, find string) (int, string) {
 	return idx, ""
 }
 
+func printUncapped(d *data) {
+	hasLeft := false
+	for i := 0; i < len(d.Characters); i++ {
+		if !isCapped(&d.Characters[i]) {
+			if !hasLeft {
+				hasLeft = true
+				println("Characters left to cap:")
+			}
+
+			fmt.Printf("- %s: %s\n", d.Characters[i].Name, d.Characters[i].Class)
+		}
+	}
+	if !hasLeft {
+		println("All characters capped :)")
+	}
+}
+
+func exepath() string {
+	ex, err := os.Executable()
+	if err != nil {
+		panic(err)
+	}
+	return filepath.Dir(ex)
+}
+
 func main() {
-	f, err := os.ReadFile("chars.json")
+	prefix := exepath()
+	f, err := os.ReadFile(prefix + "/chars.json")
 	if err != nil {
 		panic("Couldn't open file")
 	}
@@ -107,20 +134,7 @@ func main() {
 	}
 
 	if len(os.Args) < 2 {
-		hasLeft := false
-		for i := 0; i < len(d.Characters); i++ {
-			if !isCapped(&d.Characters[i]) {
-				if !hasLeft {
-					hasLeft = true
-					println("Characters left to cap:")
-				}
-
-				fmt.Printf("- %s: %s\n", d.Characters[i].Name, d.Characters[i].Class)
-			}
-		}
-		if !hasLeft {
-			println("All characters capped :)")
-		}
+		printUncapped(&d)
 	} else {
 		switch os.Args[1] {
 
@@ -135,6 +149,7 @@ func main() {
 				panic(err)
 			}
 			d.Characters[idx].LastCap = time.Now()
+			printUncapped(&d)
 
 		case "add":
 			if len(os.Args) != 4 {
@@ -153,7 +168,7 @@ func main() {
 		case "list":
 			println("Characters:")
 			for i := 0; i < len(d.Characters); i++ {
-				fmt.Printf("- %s: %s (%s)\n", d.Characters[i].Name, d.Characters[i].Class, capped(&d.Characters[i]))
+				fmt.Printf("%s %s: %s\n", capped(&d.Characters[i]), d.Characters[i].Name, d.Characters[i].Class)
 			}
 
 		default:
@@ -164,6 +179,7 @@ func main() {
 			}
 			d.Characters[idx].LastCap = time.Now()
 			fmt.Printf("Capped %s\n", d.Characters[idx].Name)
+			printUncapped(&d)
 		}
 	}
 
@@ -172,7 +188,7 @@ func main() {
 		panic("Couldn't encode json")
 	}
 
-	if err := ioutil.WriteFile("chars.json", w, 0); err != nil {
+	if err := ioutil.WriteFile(prefix+"/chars.json", w, 0); err != nil {
 		panic("Couldn't write the file")
 	}
 }
